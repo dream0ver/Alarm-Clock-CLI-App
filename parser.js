@@ -1,8 +1,6 @@
 const { help } = require("./help")
-const AlarmClock = require("./AlarmClock")
-const clock_instance = new AlarmClock()
 
-function parser(input) {
+function parser(ins, input) {
   const input_split_arr = input.trim().split(" ")
   const command = input_split_arr.slice(0, 1)[0]
   const args = input_split_arr.slice(1)
@@ -16,31 +14,35 @@ function parser(input) {
 
   switch (command) {
     case "list-all-alarms": {
-      clock_instance.getAllAlarms()
+      ins.getAllAlarms()
       break
     }
     case "list-active-alarms": {
-      clock_instance.getActiveAlarms()
+      ins.getActiveAlarms()
       break
     }
     case "clear-expired-alarms": {
-      clock_instance.removeStaleAlarms()
+      ins.removeStaleAlarms()
       break
     }
     case "get-current-datetime": {
-      clock_instance.getCurrentDateTime()
+      ins.getCurrentDateTime()
       break
     }
     case "delete-alarm": {
-      clock_instance.deleteAlarm(...cleanArgs)
+      ins.deleteAlarm(...cleanArgs)
       break
     }
-    case "snooze-alarm": {
-      clock_instance.snoozeAlarm(...cleanArgs)
+    case "snooze": {
+      ins.snoozeRunningAlarms()
+      break
+    }
+    case "off": {
+      ins.turnOffRunningAlarms()
       break
     }
     case "set-alarm": {
-      clock_instance.setAlarm(...cleanArgs)
+      ins.setAlarm(...cleanArgs)
       break
     }
     case "help": {
@@ -49,7 +51,7 @@ function parser(input) {
     }
     default: {
       console.log(
-        "Please enter a valid command.\nType 'help' for more information."
+        "Please enter a valid command." + "\nType 'help' for more information."
       )
     }
   }

@@ -31,10 +31,14 @@ The following commands are supported:
    - Successfully deletes the specified alarm.
    - Example Usage: delete-alarm -ALARM_1723908137892_394
 
-  7) snooze-alarm -id
-   - Takes one flag:
-   - -id (mandatory): The unique identifier of the alarm.
-   - Successfully snoozes the specified alarm by 5 minutes. This can be executed up to 3 times per alarm.
-   - Example Usage: snooze-alarm -ALARM_1723908137892_394
+  7) snooze
+   - No flags required.
+   - Snoozes the running alarms by 5 minutes, This can be executed up to 3 times per alarm.
+   - Example Usage: snooze
+
+  7) off
+   - No flags required.
+   - Turns off any running alarms completely.
+   - Example Usage: off
 `
 module.exports = { help }

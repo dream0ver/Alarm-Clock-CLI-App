@@ -1,12 +1,16 @@
 const fs = require("fs")
+const { eventEmitter } = require("./EventEmitter")
 
 class AlarmClock {
-  #snooze_limit = 3 // Max snooze limit is 3 times.
-  #snooze_interval = 300 // Default snooze interval is 5 Minutes i.e 300 seconds.
+  // Private Class members below
+
+  #snooze_limit = 3 // Max snooze limit is 3 times
+  #snooze_interval = 300 // Default snooze interval is 5 Minutes i.e 300 seconds
   #alarms = []
+  #interval_id = ""
 
   #getCurrentDatetimeArr() {
-    // This private helper method returns an array with the formatted values [date,time].
+    // This private helper method returns an array with the formatted values [date,time]
     const localeOptions = {
       hour12: false,
       timeStyle: "short",
@@ -17,8 +21,21 @@ class AlarmClock {
     return [date, time, d]
   }
 
+  #poll() {
+    // This methods polls every 1 second to check if any alarms are running
+    const [date, time] = this.#getCurrentDatetimeArr()
+    const running = this.#alarms.filter(
+      alarm => date == alarm.date && time == alarm.time && !!!alarm?.expired
+    )
+    if (running.length)
+      eventEmitter.emit(
+        "running_alarms",
+        running.map(alarm => alarm.id)
+      )
+  }
+
   #doesAlarmExist(id) {
-    // This private method checks if an alarm with the given id exists.
+    // This private method checks if an alarm with the given id exists
     const value = this.#alarms.find(alarm => alarm.id == id)
     return {
       exists: !!value,
@@ -27,7 +44,7 @@ class AlarmClock {
   }
 
   #saveAlarmsToFile() {
-    // Saves the state of active alarms to a file for persistant storage.
+    // Saves the state of active alarms to a file for persistant storage
     try {
       fs.writeFileSync("./SavedAlarms.json", JSON.stringify(this.#alarms))
     } catch (err) {
@@ -35,8 +52,10 @@ class AlarmClock {
     }
   }
 
+  // Public Class methods below
+
   constructor() {
-    // Line below ensures to always return the same instance, I have implemented Singleton pattern so there is only one instance of clock at a time for simplicity.
+    // Line below ensures to always return the same instance, I have implemented Singleton pattern so there is only one instance of clock at a time for simplicity
     if (AlarmClock.hasInstance) return AlarmClock.hasInstance
     AlarmClock.hasInstance = this
     try {
@@ -44,20 +63,24 @@ class AlarmClock {
     } catch (err) {
       console.error(err)
     }
+    this.#interval_id = setInterval(() => this.#poll(), 1000)
+  }
+
+  destroy() {
+    clearInterval(this.#interval_id)
   }
 
   getAllAlarms() {
-    // This method prints all the  alarms which includes both upcomming and past alarms.
+    // This method prints all the  alarms which includes both upcomming and past alarms
     console.log(this.#alarms)
   }
 
   getCurrentDateTime() {
-    // This method prints current date and time based on user's local timezone in the following format --> Current Date: DD/MM/YYYY\nCurrent Time: HH:mm.
+    // This method prints current date and time based on user's local timezone in the following format --> Current Date: DD/MM/YYYY Current Time: HH:mm
     const [date, time] = this.#getCurrentDatetimeArr()
-    const str = `Current Date: ${date} (DD/MM/YYYY)\nCurrent Time: ${time.padEnd(
-      10,
-      " "
-    )} (HH:mm)`
+    const str =
+      `Current Date: ${date} (DD/MM/YYYY)` +
+      `\nCurrent Time: ${time.padEnd(10, " ")} (HH:mm)`
     console.log(str)
   }
 
@@ -97,13 +120,13 @@ class AlarmClock {
     )
 
     if (arg_d.getTime() > current_d.getTime()) {
-      // This method sets an alarm at the specified date and time and prints  the unique alarm id.
-      const id = `ALARM_${Date.now()}_${Math.floor(Math.random() * 1000)}` // Generating random id to assing to every unique active alarm.
+      // This method sets an alarm at the specified date and time and prints  the unique alarm id
+      const id = `ALARM_${Date.now()}_${Math.floor(Math.random() * 1000)}` // Generating random id to assing to every unique active alarm
       this.#alarms.push({
         id,
         snoozes_left: this.#snooze_limit,
-        alarmAlertTime: time,
-        alarmAlertDate: defaultDate,
+        time: time,
+        date: defaultDate,
       })
       this.#saveAlarmsToFile()
       console.log(
@@ -115,11 +138,11 @@ class AlarmClock {
   }
 
   getActiveAlarms(shouldPrint = true) {
-    // This method returns only the upcomming active alarms.
+    // This method returns only the upcomming active alarms
     const [currDate, currTime, current_d] = this.#getCurrentDatetimeArr()
     const active_alarms = this.#alarms.filter(alarm => {
-      const dateArr = alarm.alarmAlertDate.split("/")
-      const timeArr = alarm.alarmAlertTime.split(":")
+      const dateArr = alarm.date.split("/")
+      const timeArr = alarm.time.split(":")
       const alarm_d = new Date(
         dateArr[2],
         dateArr[1] - 1,
@@ -127,7 +150,7 @@ class AlarmClock {
         timeArr[0],
         timeArr[1]
       )
-      return alarm_d.getTime() > current_d.getTime()
+      return alarm_d.getTime() > current_d.getTime() && !!!alarm?.expired
     })
     if (shouldPrint) {
       console.log(active_alarms)
@@ -136,7 +159,7 @@ class AlarmClock {
   }
 
   removeStaleAlarms() {
-    // This method removes stale alarms from the state.
+    // This method removes stale alarms from the state
     const active_alarms = this.getActiveAlarms(false)
     this.#alarms = active_alarms
     this.#saveAlarmsToFile()
@@ -152,45 +175,56 @@ class AlarmClock {
       console.log(`Alarm (${id}) deleted successfully.`)
     }
   }
-
-  snoozeAlarm(id) {
-    const currAlarm = this.#doesAlarmExist(id)
-    if (!currAlarm.exists) {
-      console.log(`Snooze failed alarm ${id} does not exist.`)
-    } else if (currAlarm.alarm.snoozes_left <= 0) {
-      console.log(`Snooze limit exhausted, Cannot snooze alarm ${id}.`)
-    } else {
-      this.#alarms = this.#alarms.map(alarm => {
-        if (alarm.id != id) return alarm
-        const dateArr = alarm.alarmAlertDate.split("/")
-        const timeArr = alarm.alarmAlertTime.split(":")
-        const d = new Date(
-          dateArr[2],
-          dateArr[1] - 1,
-          dateArr[0],
-          timeArr[0],
-          timeArr[1]
-        )
-        d.setSeconds(d.getSeconds() + this.#snooze_interval)
-        const [newAlarmAlertDate, newAlarmAlertTime] = d
-          .toLocaleString("en-GB", {
-            hour12: false,
-            timeStyle: "short",
-            dateStyle: "short",
-          })
-          .split(", ")
-        return {
-          ...alarm,
-          snoozes_left: alarm.snoozes_left - 1,
-          alarmAlertDate: newAlarmAlertDate,
-          alarmAlertTime: newAlarmAlertTime,
-        }
-      })
-      this.#saveAlarmsToFile()
-    }
+  turnOffRunningAlarms() {
+    const [date, time] = this.#getCurrentDatetimeArr()
+    this.#alarms = this.#alarms.map(alarm => {
+      const isRunning = date == alarm.date && time == alarm.time
+      if (!isRunning) return alarm
+      console.log(`Successfully turned off the alarm ${alarm.id}.`)
+      return {
+        ...alarm,
+        expired: true,
+      }
+    })
+    this.#saveAlarmsToFile()
+  }
+  snoozeRunningAlarms() {
+    // This method snoozes all the currently running alarms
+    const [date, time] = this.#getCurrentDatetimeArr()
+    this.#alarms = this.#alarms.map(alarm => {
+      const isRunning = date == alarm.date && time == alarm.time
+      if (!isRunning) return alarm
+      if (alarm.snoozes_left <= 0) {
+        console.log(`Snooze limit exhausted, Cannot snooze alarm ${id}.`)
+        return alarm
+      }
+      const dateArr = alarm.date.split("/")
+      const timeArr = alarm.time.split(":")
+      const d = new Date(
+        dateArr[2],
+        dateArr[1] - 1,
+        dateArr[0],
+        timeArr[0],
+        timeArr[1]
+      )
+      d.setSeconds(d.getSeconds() + this.#snooze_interval)
+      const [newAlarmAlertDate, newAlarmAlertTime] = d
+        .toLocaleString("en-GB", {
+          hour12: false,
+          timeStyle: "short",
+          dateStyle: "short",
+        })
+        .split(", ")
+      console.log(`Successfully snoozed the alarm ${alarm.id} by 5 minutes.`)
+      return {
+        ...alarm,
+        snoozes_left: alarm.snoozes_left - 1,
+        date: newAlarmAlertDate,
+        time: newAlarmAlertTime,
+      }
+    })
+    this.#saveAlarmsToFile()
   }
 }
 
 module.exports = AlarmClock
-
-//fix snooze method

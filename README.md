@@ -14,7 +14,7 @@ node main.js
 
 # Supported Commands
 
-## 1) set-alarm time date
+## 1) set-alarm -time -date
    Sets a new alarm.\
    Parameters:\
    time (mandatory): The time for the alarm in HH:mm (24-hour) format.\
@@ -52,19 +52,26 @@ node main.js
    get-current-datetime
    ```
 
-## 6) delete-alarm ALARM_ID
+## 6) delete-alarm -id
    Deletes the specified alarm using the provided ALARM_ID.\
    Example:
    ```bash
    delete-alarm ALARM_34038403434343_434
    ```
 
-## 7) snooze-alarm ALARM_ID
-   Snoozes the specified alarm using the provided ALARM_ID.\
+## 7) snooze
+   Snoozes any active alarms, This command does not take any parameters.\
    Example:
    Note: The maximum snooze limit is 3 times, with a snooze interval of 5 minutes.
    ```bash
-   snooze-alarm ALARM_34038403434343_434
+   snooze
+   ```
+
+## 8) off
+   Turns off any active alarms, This command does not take any parameters.\
+   Example:
+   ```bash
+   off
    ```
 
 
